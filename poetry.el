@@ -607,7 +607,8 @@ compilation buffer name."
                      (poetry-error "Could not find 'poetry' executable")))
            (args (if (or (string= command "run")
                          (string= command "config")
-                         (string= command "init"))
+                         (string= command "init")
+                         (string= command "env"))
                      (cl-concatenate 'list (list (symbol-name command))
                                      args)
                    (cl-concatenate 'list (list
@@ -619,7 +620,7 @@ compilation buffer name."
             (compilation-ask-about-save nil)
             (compilation-save-buffers-predicate (lambda () nil)))
         (save-window-excursion
-            (compile (concat prog " " (string-join args " "))))
+          (compile (concat prog " " (string-join args " "))))
         ;; compilation hooks
         (with-current-buffer (poetry-buffer-name)
           (add-hook 'after-change-functions
@@ -809,18 +810,10 @@ If OPT is non-nil, set an optional dep."
            (file-exists-p poetry-project-venv))
       poetry-project-venv
     (setq poetry-project-venv
-          (or
-           ;; virtualenvs in project
-           (if (poetry-get-configuration "virtualenvs.in-project")
-               (concat (file-name-as-directory (poetry-find-project-root))
-                       ".venv")
-             ;; virtualenvs elsewhere
-             (car (directory-files
-                   (poetry-get-configuration "virtualenvs.path")
-                   t
-                   (format "%s-py"
-                           (poetry-get-project-name)))))
-           nil))))
+          (with-current-buffer (poetry-call 'env '("info" "-p") nil nil t)
+            (replace-regexp-in-string "\n" ""
+                                      (buffer-substring-no-properties
+                                       (point-min) (point-max)))))))
 
 (defun poetry-find-pyproject-file ()
   "Return the location of the 'pyproject.toml' file."
